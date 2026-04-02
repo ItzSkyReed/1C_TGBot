@@ -9,5 +9,6 @@ public interface IOneCService
     public Task<List<Component>> GetSimilarComponentName(string componentName, CancellationToken ct);
     public Task<List<Supplier>> GetSimilarSupplierName(string supplierName, CancellationToken ct);
     public Task<bool> SendClaimAsync(ClaimData data, CancellationToken ct);
+    Task<bool> AuthorizeUserAsync(UserAuthDto user, CancellationToken ct);
 
 }

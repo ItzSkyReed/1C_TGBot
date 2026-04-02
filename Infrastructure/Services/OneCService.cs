@@ -31,6 +31,7 @@ public class OneCService(HttpClient httpClient) : IOneCService
         {
             throw new HttpRequestException($"Комплектующие по запросу '{componentName}' не найдены.", null, response.StatusCode);
         }
+
         response.EnsureSuccessStatusCode();
 
         return await response.Content.ReadFromJsonAsync<List<Component>>(Options, ct) ?? [];
@@ -46,6 +47,7 @@ public class OneCService(HttpClient httpClient) : IOneCService
         {
             throw new HttpRequestException($"Поставщики по запросу '{supplierName}' не найдены.", null, response.StatusCode);
         }
+
         response.EnsureSuccessStatusCode();
 
         return await response.Content.ReadFromJsonAsync<List<Supplier>>(Options, ct) ?? [];
@@ -68,4 +70,17 @@ public class OneCService(HttpClient httpClient) : IOneCService
         return true;
     }
 
+    public async Task<bool> AuthorizeUserAsync(UserAuthDto user, CancellationToken ct)
+    {
+        var response = await httpClient.PostAsJsonAsync("users/auth", user, ct);
+        if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        {
+
+            return false;
+        }
+
+        response.EnsureSuccessStatusCode();
+
+        return true;
+    }
 }
