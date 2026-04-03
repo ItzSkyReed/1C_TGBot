@@ -7,13 +7,27 @@ using Telegram.Bot.Types.Enums;
 
 namespace TelegramBot.Commands;
 
-public class StartCommand(IOneCService oneCService, IUserStateService stateService) : IBotCommand
+public class StartCommand(IOneCService oneCService, IUserStateService stateService, IAuthorizationCacheService authorizationCache) : IBotCommand
 {
     public string CommandName => "/start";
 
     public async Task ExecuteAsync(Message message, ITelegramBotClient bot, CancellationToken ct)
     {
         var chatId = message.Chat.Id;
+        var userId = message.From!.Id;
+
+        if (authorizationCache.IsAuthorized(userId))
+        {
+            await bot.SendMessage(
+                chatId: chatId,
+                text: "ℹ️ *Вы уже авторизованы!*\n\nСписок всех доступных команд и их описание можно вызвать через /help",
+                parseMode: ParseMode.Markdown,
+                cancellationToken: ct);
+
+            stateService.ClearSession(chatId);
+            return;
+        }
+
         if (message.Text != null && message.Text.StartsWith(CommandName))
         {
             await HandleStartAsync(message, bot, ct);
@@ -83,6 +97,7 @@ public class StartCommand(IOneCService oneCService, IUserStateService stateServi
                     cancellationToken: ct);
 
                 stateService.ClearSession(chatId);
+                authorizationCache.AddUser(message.From.Id);
             }
             else
             {

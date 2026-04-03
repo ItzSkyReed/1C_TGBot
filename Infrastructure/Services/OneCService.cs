@@ -83,4 +83,9 @@ public class OneCService(HttpClient httpClient) : IOneCService
 
         return true;
     }
+
+    public async Task<IEnumerable<long>> GetAuthorizedTgUsersAsync(CancellationToken ct)
+    {
+        return await httpClient.GetFromJsonAsync<IEnumerable<long>>("users/authtg", ct) ?? [];
+    }
 }

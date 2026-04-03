@@ -29,22 +29,6 @@ internal static class Program
         });
 
 
-        // var host = builder.Configuration.GetValue<string>("POSTGRES_HOST");
-        // var db = builder.Configuration.GetValue<string>("POSTGRES_DB");
-        // var user = builder.Configuration.GetValue<string>("POSTGRES_USER");
-        // var pass = builder.Configuration.GetValue<string>("POSTGRES_PASSWORD");
-        //
-        // var connectionString = $"Host={host};Database={db};Username={user};Password={pass};Port=5432; Include Error Detail=true;";
-
-        // builder.Services.AddDbContext<HolidayDbContext>(options =>
-        //     options.UseNpgsql(connectionString));
-
-        // builder.Services.AddScoped<IHolidayRepository, HolidayRepository>();
-        // builder.Services.AddScoped<IHolidayProvider, HolidayProvider>();
-        // builder.Services.AddScoped<ISubscriptionDeliver, SubscriptionDeliver>();
-        //
-        // builder.Services.AddSingleton<IHolidayScraper, CalendRuScraper>();
-
         builder.Services.AddSingleton<ITelegramBotClient>(_ =>
         {
             var token = builder.Configuration.GetValue<string>("TG_BOT_TOKEN");
@@ -52,21 +36,25 @@ internal static class Program
         });
 
         builder.Services.AddSingleton<IUserStateService, UserStateService>();
+        builder.Services.AddSingleton<IAuthorizationCacheService, AuthorizationCacheService>();
 
         builder.Services.AddTransient<IBotCommand, StartCommand>();
         builder.Services.AddTransient<IBotCommand, LeftoversCommand>();
         builder.Services.AddTransient<IBotCommand, ClaimCommand>();
+        builder.Services.AddTransient<IBotCommand, HelpCommand>();
 
         builder.Services.AddHostedService<TgBotWorker>();
+        builder.Services.AddHostedService<OneCSyncWorker>();
 
         var worker = builder.Build();
 
-        // using (var scope = worker.Services.CreateScope())
-        // {
-        //     var context = scope.ServiceProvider.GetRequiredService<HolidayDbContext>();
-        //
-        //     await context.Database.MigrateAsync();
-        // }
+        using (var scope = worker.Services.CreateScope())
+        {
+            var oneCService = scope.ServiceProvider.GetRequiredService<IOneCService>();
+            var authCache = scope.ServiceProvider.GetRequiredService<IAuthorizationCacheService>();
+
+            authCache.UpdateCache(await oneCService.GetAuthorizedTgUsersAsync(CancellationToken.None));
+        }
 
         await worker.RunAsync();
     }

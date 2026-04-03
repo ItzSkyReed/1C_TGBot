@@ -2,7 +2,7 @@
 
 public record UserSession
 {
-    public string ActiveCommand { get; set; } = string.Empty;
+    public string ActiveCommand { get; init; } = string.Empty;
     public string CurrentStep { get; set; } = string.Empty;
     private string ContextData { get; set; } = "{}";
 

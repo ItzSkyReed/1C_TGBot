@@ -7,7 +7,8 @@ using TelegramBot.Interfaces;
 
 namespace TelegramBot;
 
-public class TgBotWorker(ITelegramBotClient bot, IServiceScopeFactory scopeFactory, ILogger<TgBotWorker> logger) : BackgroundService
+public class TgBotWorker(ITelegramBotClient bot, IServiceScopeFactory scopeFactory, ILogger<TgBotWorker> logger,
+    IUserStateService userStateService, IEnumerable<IBotCommand> botCommands, IAuthorizationCacheService authorizationCache) : BackgroundService
 {
     private string? _botUsername;
 
@@ -26,9 +27,10 @@ public class TgBotWorker(ITelegramBotClient bot, IServiceScopeFactory scopeFacto
     {
         var commands = new[]
         {
-            new BotCommand { Command = "start", Description = "Запустить бота" },
+            new BotCommand { Command = "start", Description = "Авторизация в боте" },
             new BotCommand { Command = "leftovers", Description = "Просмотреть остатки" },
-            new BotCommand { Command = "claim", Description = "Добавить претензию" }
+            new BotCommand { Command = "claim", Description = "Добавить претензию" },
+            new BotCommand { Command = "help", Description = "Более подробное описание команд" }
         };
 
         await botClient.SetMyCommands(commands);
@@ -53,14 +55,37 @@ public class TgBotWorker(ITelegramBotClient bot, IServiceScopeFactory scopeFacto
         try
         {
             using var scope = scopeFactory.CreateScope();
-            var commands = scope.ServiceProvider.GetServices<IBotCommand>();
 
-            var stateService = scope.ServiceProvider.GetRequiredService<IUserStateService>();
+            var userId = update.Message?.From?.Id ?? update.CallbackQuery?.From.Id ?? 0;
+            var chatId = update.Message?.Chat.Id ?? update.CallbackQuery?.Message?.Chat.Id ?? 0;
+            var text = update.Message?.Text;
+
+            if (userId != 0 && chatId != 0)
+            {
+                var isAuthorized = authorizationCache.IsAuthorized(userId);
+                var isStartCommand = text?.StartsWith("/start", StringComparison.OrdinalIgnoreCase) == true;
+
+                var session = userStateService.GetSession(chatId);
+                //Console.WriteLine($"{session?.ActiveCommand}, {session?.CurrentStep}");
+
+                var isAuthorizingSession = session is { ActiveCommand: "/start", CurrentStep: "WaitingForAuthCode" };
+
+                // блокируем, только если НЕ авторизован, НЕ пишет /start и НЕ находится в процессе ввода кода
+                if (!isAuthorized && !isStartCommand && !isAuthorizingSession)
+                {
+                    await botClient.SendMessage(
+                        chatId: chatId,
+                        text: "Вы не авторизованы 🛑\nПожалуйста, напишите /start для прохождения авторизации.",
+                        cancellationToken: ct);
+
+                    return;
+                }
+            }
 
             var task = update switch
             {
-                { Message: { } msg } => ProcessMessage(msg, commands, stateService, ct),
-                { CallbackQuery: { Data: { } data } query } => ProcessCallback(query, data, commands, ct),
+                { Message: { } msg } => ProcessMessage(msg, userStateService, ct),
+                { CallbackQuery: { Data: { } data } query } => ProcessCallback(query, data, botCommands, ct),
                 _ => Task.CompletedTask
             };
 
@@ -72,12 +97,11 @@ public class TgBotWorker(ITelegramBotClient bot, IServiceScopeFactory scopeFacto
         }
     }
 
-    private async Task ProcessMessage(Message msg, IEnumerable<IBotCommand> commands, IUserStateService stateService, CancellationToken ct)
+    private async Task ProcessMessage(Message msg, IUserStateService stateService, CancellationToken ct)
     {
         var chatId = msg.Chat.Id;
         var session = stateService.GetSession(chatId);
 
-        var botCommands = commands.ToList();
         if (session != null)
         {
             var activeCommand = botCommands.FirstOrDefault(x =>
@@ -112,7 +136,7 @@ public class TgBotWorker(ITelegramBotClient bot, IServiceScopeFactory scopeFacto
         var command = botCommands.FirstOrDefault(x =>
             baseCommand.Equals(x.CommandName, StringComparison.OrdinalIgnoreCase));
 
-        logger.LogWarning("{FromUsername} wrote command {UserCommand}, {BotCommand} was found", msg.From?.Username, text, command?.CommandName);
+        logger.LogWarning("{FromUsername} написал команду {UserCommand}, {BotCommand} была найдена", msg.From?.Username, text, command?.CommandName);
 
         if (command != null)
         {
@@ -130,7 +154,7 @@ public class TgBotWorker(ITelegramBotClient bot, IServiceScopeFactory scopeFacto
         var command = commands.FirstOrDefault(x =>
             baseCommand.Equals(x.CommandName, StringComparison.OrdinalIgnoreCase));
 
-        logger.LogWarning("{FromUsername} used inline command {UserCommand}, {BotCommand} was found", query.From.Username, buttonCommand, command?.CommandName);
+        logger.LogWarning("{FromUsername} использовал кнопку-команду {UserCommand}, {BotCommand} была найдена", query.From.Username, buttonCommand, command?.CommandName);
 
         if (command != null)
         {
