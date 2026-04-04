@@ -18,12 +18,11 @@ public class AuthorizationCacheService : IAuthorizationCacheService
 
     public void AddUser(long telegramId)
     {
-        lock (_lock)
+        using (_lock.EnterScope())
         {
             // Запоминаем, что юзер добавился "между" синхронизациями
             _recentlyAdded.Add(telegramId);
 
-            // Добавляем в текущий кэш
             var newSet = new HashSet<long>(_authorizedUsers) { telegramId };
             _authorizedUsers = newSet;
         }
@@ -31,21 +30,17 @@ public class AuthorizationCacheService : IAuthorizationCacheService
 
     public void UpdateCache(IEnumerable<long> newIds)
     {
-        lock (_lock)
+        using (_lock.EnterScope())
         {
             var newSet = new HashSet<long>(newIds);
 
-            // Подмешиваем тех, кто авторизовался, пока шел запрос к 1С
             foreach (var id in _recentlyAdded)
             {
                 newSet.Add(id);
             }
 
-            // Атомарно обновляем основной кэш
             _authorizedUsers = newSet;
 
-            // Очищаем буфер. Теперь эти пользователи гарантированно
-            // есть в базе 1С и придут при следующем обновлении сами.
             _recentlyAdded.Clear();
         }
     }
