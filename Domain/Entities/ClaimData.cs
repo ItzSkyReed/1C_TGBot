@@ -1,6 +1,6 @@
 ﻿namespace Domain.Entities;
 
-public record ClaimData()
+public record ClaimData
 {
     public string ComponentId { get; set; } = string.Empty;
     public string ComponentName { get; set; } = string.Empty;

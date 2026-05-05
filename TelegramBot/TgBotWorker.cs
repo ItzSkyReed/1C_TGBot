@@ -1,4 +1,5 @@
 using Application.Interfaces;
+using Domain.Entities;
 using Telegram.Bot;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
@@ -66,9 +67,8 @@ public class TgBotWorker(ITelegramBotClient bot, IServiceScopeFactory scopeFacto
                 var isStartCommand = text?.StartsWith("/start", StringComparison.OrdinalIgnoreCase) == true;
 
                 var session = userStateService.GetSession(chatId);
-                //Console.WriteLine($"{session?.ActiveCommand}, {session?.CurrentStep}");
 
-                var isAuthorizingSession = session is { ActiveCommand: "/start", CurrentStep: "WaitingForAuthCode" };
+                var isAuthorizingSession = session is { ActiveCommand: "/start", CurrentStep: StartSteps.WaitingForAuthCode};
 
                 // блокируем, только если НЕ авторизован, НЕ пишет /start и НЕ находится в процессе ввода кода
                 if (!isAuthorized && !isStartCommand && !isAuthorizingSession)

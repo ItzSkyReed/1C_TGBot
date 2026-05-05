@@ -3,7 +3,7 @@
 public record UserSession
 {
     public string ActiveCommand { get; init; } = string.Empty;
-    public string CurrentStep { get; set; } = string.Empty;
+    public required SessionStep CurrentStep { get; set; }
     private string ContextData { get; set; } = "{}";
 
 

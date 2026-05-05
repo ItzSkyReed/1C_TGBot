@@ -35,7 +35,7 @@ public class StartCommand(IOneCService oneCService, IUserStateService stateServi
         }
 
         var session = stateService.GetSession(chatId);
-        if (session != null && session.ActiveCommand == CommandName && session.CurrentStep == "WaitingForAuthCode")
+        if (session != null && session.ActiveCommand == CommandName && session.CurrentStep is StartSteps.WaitingForAuthCode)
         {
             await HandleAuthCodeStepAsync(message, bot, ct);
         }
@@ -48,7 +48,7 @@ public class StartCommand(IOneCService oneCService, IUserStateService stateServi
         var session = new UserSession
         {
             ActiveCommand = CommandName,
-            CurrentStep = "WaitingForAuthCode"
+            CurrentStep = new StartSteps.WaitingForAuthCode()
         };
         stateService.SetSession(chatId, session);
 

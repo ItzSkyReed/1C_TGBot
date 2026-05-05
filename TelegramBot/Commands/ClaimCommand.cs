@@ -27,16 +27,16 @@ public class ClaimCommand(IUserStateService stateService, IOneCService oneCServi
 
         switch (session.CurrentStep)
         {
-            case "WaitingForComponent":
+            case ClaimSteps.WaitingForComponent:
                 await HandleComponentStepAsync(message, session, bot, ct);
                 break;
-            case "WaitingForSupplier":
+            case ClaimSteps.WaitingForSupplier:
                 await HandleSupplierStepAsync(message, session, bot, ct);
                 break;
-            case "WaitingForDescription":
+            case ClaimSteps.WaitingForDescription:
                 await HandleDescriptionStepAsync(message, session, bot, ct);
                 break;
-            case "WaitingForPhoto":
+            case ClaimSteps.WaitingForPhoto:
                 await HandlePhotoStepAsync(message, session, bot, ct);
                 break;
         }
@@ -78,7 +78,7 @@ public class ClaimCommand(IUserStateService stateService, IOneCService oneCServi
         var session = new UserSession
         {
             ActiveCommand = CommandName,
-            CurrentStep = "WaitingForComponent"
+            CurrentStep = new ClaimSteps.WaitingForComponent()
         };
         stateService.SetSession(chatId, session);
 
@@ -140,7 +140,7 @@ public class ClaimCommand(IUserStateService stateService, IOneCService oneCServi
         data.ComponentId = bestComponent.Id;
 
         session.SetData(data);
-        session.CurrentStep = "WaitingForSupplier";
+        session.CurrentStep = new ClaimSteps.WaitingForSupplier();
         stateService.SetSession(message.Chat.Id, session);
 
         await bot.SendMessage(message.Chat.Id,
@@ -202,7 +202,7 @@ public class ClaimCommand(IUserStateService stateService, IOneCService oneCServi
         data.SupplierId = bestSupplier.Id;
 
         session.SetData(data);
-        session.CurrentStep = "WaitingForDescription";
+        session.CurrentStep = new ClaimSteps.WaitingForDescription();
         stateService.SetSession(message.Chat.Id, session);
 
         await bot.SendMessage(
@@ -222,7 +222,7 @@ public class ClaimCommand(IUserStateService stateService, IOneCService oneCServi
 
         session.SetData(data);
 
-        session.CurrentStep = "WaitingForPhoto";
+        session.CurrentStep = new ClaimSteps.WaitingForPhoto();
         stateService.SetSession(message.Chat.Id, session);
 
         var skipMarkup = new InlineKeyboardMarkup(
@@ -244,7 +244,7 @@ public class ClaimCommand(IUserStateService stateService, IOneCService oneCServi
             data.PhotoFileId = message.Photo.Last().FileId;
 
             session.SetData(data);
-            session.CurrentStep = "Confirmation";
+            session.CurrentStep = new ClaimSteps.WaitingForConfirmation();
             stateService.SetSession(message.Chat.Id, session);
 
             await SendConfirmationAsync(message.Chat.Id, data, bot, ct);
@@ -259,7 +259,7 @@ public class ClaimCommand(IUserStateService stateService, IOneCService oneCServi
     {
         var chatId = query.Message!.Chat.Id;
 
-        session.CurrentStep = "Confirmation";
+        session.CurrentStep = new ClaimSteps.WaitingForConfirmation();
         stateService.SetSession(chatId, session);
 
         var data = session.GetData<ClaimData>();
@@ -304,7 +304,6 @@ public class ClaimCommand(IUserStateService stateService, IOneCService oneCServi
         }
         catch (Exception)
         {
-
             await bot.EditMessageText(chatId, query.Message.MessageId, "⚠️ Произошла ошибка при отправке претензии в 1С. ", cancellationToken: ct);
         }
     }
