@@ -12,7 +12,6 @@ public class LeftoversCommand(IOneCService oneCService) : IBotCommand
 {
     public string CommandName => "/leftovers";
 
-    // ЭТАП 1: Пользователь написал /leftovers — выводим список категорий
     public async Task ExecuteAsync(Message message, ITelegramBotClient bot, CancellationToken ct)
     {
         var categories = await oneCService.GetComponentCategoriesAsync(ct);
@@ -38,7 +37,6 @@ public class LeftoversCommand(IOneCService oneCService) : IBotCommand
             cancellationToken: ct);
     }
 
-    // ЭТАП 2: Пользователь нажал на кнопку — выводим остатки по этой категории
     public async Task ExecuteAsync(CallbackQuery query, ITelegramBotClient bot, CancellationToken ct)
     {
         var parts = query.Data!.Split(':');
@@ -72,7 +70,6 @@ public class LeftoversCommand(IOneCService oneCService) : IBotCommand
             responseText = Markdown.Escape("ℹ️ В этой категории сейчас нет товаров с остатками.");
         }
 
-        // Редактируем старое сообщение с категориями на список товаров
         await bot.EditMessageText(
             chatId: query.Message!.Chat.Id,
             messageId: query.Message.MessageId,
@@ -80,7 +77,6 @@ public class LeftoversCommand(IOneCService oneCService) : IBotCommand
             parseMode: ParseMode.MarkdownV2,
             cancellationToken: ct);
 
-        // Убираем "часики" на кнопке в Telegram
         await bot.AnswerCallbackQuery(query.Id, cancellationToken: ct);
     }
 }
