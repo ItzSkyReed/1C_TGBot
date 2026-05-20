@@ -52,7 +52,6 @@ public class LeftoversCommand(IOneCService oneCService) : IBotCommand
             .FirstOrDefault(button => button.CallbackData == query.Data)?
             .Text ?? "Выбранная категория";
 
-        // Получаем товары именно этой категории через наш новый метод 1С
         var leftovers = await oneCService.GetLeftoversByCategoryIdAsync(categoryId, ct);
 
         string responseText;
